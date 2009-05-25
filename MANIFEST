@@ -1,0 +1,12 @@
+ChangeLog
+MANIFEST
+Makefile.PL
+lib/Geo/WKT.pm
+t/01use.t
+t/10point.t
+t/11linestring.t
+t/12poly.t
+t/13multipoint.t
+t/14multiline.t
+t/15multipoly.t
+t/99pod.t
