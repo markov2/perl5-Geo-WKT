@@ -111,7 +111,7 @@ sub parse_wkt_linestring($;$)
 {   my ($string, $proj) = @_;
 
     $string && $string =~ m/^linestring\((.+)\)$/i
-        or return undef
+        or return undef;
 
     my @points = map { [split " ", $_, 2] }  split /\s*\,\s*/, $1;
     @points > 1 or return;
