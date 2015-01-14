@@ -32,6 +32,21 @@ Geo::WKT - Well Known Text representation of geometry information
 
 =chapter SYNOPSIS
 
+  # use coordinate pairs ...
+  print wkt_linestring([1,2], [2,3], [3,2], [1,2]);
+    # --> LINESTRING(1 2,2 3,3 2,1 2)
+
+  # ... or coordinatie objects
+  my $gp1 = Geo::Point->xy(6,7);
+  my $gp2 = Geo::Point->xy(8,9);
+  my $gp3 = Geo::Point->xy(6,9);
+  print wkt_linestring($gp1, $gp2, $gp3);
+    # --> LINESTRING(6 7,8 9,6 9)
+
+  # Combine with Geo::Point registration of projections
+  my $p = parse_wkt_point "POINT(3.5 6.7)", 'wgs84';
+  print $p->toString; # point[wgs84](6.7000 3.5000)
+
 =chapter DESCRIPTION
 GIS application often communicate geographical structures in WKT
 format, defined by the OpenGIS consortium.  This module translates
@@ -41,7 +56,7 @@ M<Geo::Point> objects from and to this WKT.
 
 =section Parsing Well Known Text format (WKT)
 
-=function parse_wkt_point STRING, [PROJECTION]
+=function parse_wkt_point STRING, [$projection]
 Convert a WKT string into one M<Geo::Point> object.
 =cut
 
@@ -51,7 +66,7 @@ sub parse_wkt_point($;$)
     : undef;
 }
 
-=function parse_wkt_polygon STRING, [PROJECTION]
+=function parse_wkt_polygon STRING, [$projection]
 Convert a WKT string into one M<Geo::Surface> objects, containing
 the exterior and optionally some interior polygons.
 =cut
@@ -64,14 +79,14 @@ sub parse_wkt_polygon($;$)
 
     my @poly;
     foreach my $poly (split m/\)\s*\,\s*\(/, $1)
-    {   my @points = map { [split " ", $_, 2] }  split /\s*\,\s*/, $poly;
+    {   my @points = map +[split " ", $_, 2], split /\s*\,\s*/, $poly;
         push @poly, \@points;
     }
 
     Geo::Surface->new(@poly, proj => $proj);
 }
 
-=method parse_wkt_geomcol STRING, [PROJECTION]
+=method parse_wkt_geomcol STRING, [$projection]
 Convert a WKT string into M<Geo::Space> objects, containing
 the exterior and optionally some interior polygons.
 =cut
@@ -79,32 +94,30 @@ the exterior and optionally some interior polygons.
 sub parse_wkt_geomcol($;$)
 {   my ($string, $proj) = @_;
 
-    return undef
-       if $string !~
-             s/^(multiline|multipoint|multipolygon|geometrycollection)\(//i;
+    return undef if $string !~
+        s/^(multiline|multipoint|multipolygon|geometrycollection)\(//i;
 
     my @comp;
     while($string =~ m/\D/)
-    {   last unless $string =~ s/^[^(]*\([^)]*\)//;
-        my $take  = $&;
+    {   $string =~ s/^([^(]*\([^)]*\))//
+            or last;
+
+        my $take  = $1;
         while(1)
         {   my @open  = $take =~ m/\(/g;
             my @close = $take =~ m/\)/g;
             last if @open==@close;
-            $take .= $& if $string =~ s/^[^\)]*\)//;
+            $take .= $1 if $string =~ s/^([^\)]*\))//;
         }
         push @comp, parse_wkt($take, $proj);
         $string =~ s/^\s*\,\s*//;
     }
 
-    Geo::Space->new
-      ( @comp
-      , proj => $proj
-      );
+    Geo::Space->new(@comp, proj => $proj);
 }
 
-=function parse_wkt_linestring STRING, [PROJECTION]
-Convert a WKT string into one M<Geo::Point> object.
+=function parse_wkt_linestring STRING, [$projection]
+Convert a WKT string into one M<Geo::Line> object.
 =cut
 
 sub parse_wkt_linestring($;$)
@@ -113,27 +126,27 @@ sub parse_wkt_linestring($;$)
     $string && $string =~ m/^linestring\((.+)\)$/i
         or return undef;
 
-    my @points = map { [split " ", $_, 2] }  split /\s*\,\s*/, $1;
+    my @points = map +[split " ", $_, 2], split /\s*\,\s*/, $1;
     @points > 1 or return;
 
     Geo::Line->new(proj => $proj, points => \@points, filled => 0);
 }
 
-=method parse_wkt STRING, [PROJECTION]
+=method parse_wkt STRING, [$projection]
 Parse any STRING into the applicable M<Geo::Shape> structure.
 =cut
 
-sub parse_wkt($;$)   # dirty code to avoid copying the sometimes huge string
+sub parse_wkt($;$)  # dirty code to avoid copying the sometimes huge string
 {
       $_[0] =~ m/^point\(/i      ? &parse_wkt_point
     : $_[0] =~ m/^polygon\(/i    ? &parse_wkt_polygon
-    : $_[0] =~ m/^linestring\(/i ? &parse_wkt_polygon
+    : $_[0] =~ m/^linestring\(/i ? &parse_wkt_linestring
     :                              &parse_wkt_geomcol;
 }
 
 =section Constructing Well Known Text (WKT)
 
-=function wkt_point (X,Y)|ARRAY|GEOPOINT
+=function wkt_point <$x,$y>|ARRAY|$geopoint
 Format one point into WKT format.
 
 =cut
@@ -164,13 +177,13 @@ sub wkt_point($;$)
     defined $x && defined $y ? "POINT($x $y)" : ();
 }
 
-=function wkt_linestring OBJECT|POINTS
+=function wkt_linestring $object|$points
 A line string is a non-closed list ('string') of points.
 =cut
 
 sub wkt_linestring(@) { 'LINESTRING' . _list_of_points(@_) }
 
-=function wkt_polygon (LIST of POINTS|Geo::Line|ARRAY-of-POINTS) |Geo::Surface
+=function wkt_polygon <LIST-of-points|Geo::Line|ARRAY-of-points> |Geo::Surface
 Format one polygon (exterior with optional interiors) into WKT format.
 An ARRAY contains M<Geo::Point> objects or ARRAY-REFs to pairs. You
 may also provide a M<Geo::Line> or M<Geo::Surface> OBJECTS.
@@ -195,49 +208,44 @@ sub wkt_polygon(@)
       : $_[0]->isa('Geo::Surface') ? ($_[0]->outer, $_[0]->inner)
       :                              [@_];
 
-      'POLYGON('
-    . join( ',' ,  map { _list_of_points $_ } @polys)
-    . ')';
+    'POLYGON(' .join(',' ,  map _list_of_points($_), @polys). ')';
 }
 
-=function wkt_multipoint OBJECT|POINTS
+=function wkt_multipoint $object|$points
 A set of points, which must be specified as list.  They can be stored in
 a M<Geo::Space>.
 =cut
 
-sub wkt_multipoint(@) { 'MULTIPOINT('. join(',', map {wkt_point($_)} @_) .')'}
+sub wkt_multipoint(@) { 'MULTIPOINT(' .join(',', map wkt_point($_), @_). ')'}
 
-=function wkt_multilinestring OBJECTS|ARRAY-of-LINES|ARRAYS-of-ARRAY-OF-POINTS
-Format a list of lines into WKT.  A LINE contains M<Geo::Point>
-objects or ARRAY-REFs to pairs. You may also provide a M<Geo::Line>
+=function wkt_multilinestring $objects|ARRAY-of-lines|ARRAYS-of-ARRAY-of-points
+Format a list of lines into WKT.  A line contains M<Geo::Point>
+objects or ARRAY-REFs to coordinate pairs. You may also provide a M<Geo::Line>
 or a M<Math::Polygon>.
 =cut
 
 sub wkt_multilinestring(@)
 {   return () unless @_;
-
-      'MULTILINESTRING('
-    . join( ',' ,  map { wkt_linestring $_ } @_)
-    . ')';
+    'MULTILINESTRING(' .join(',' ,  map wkt_linestring($_), @_). ')';
 }
 
-=function wkt_multipolygon OBJECTS|ARRAY-OF-LINES|ARRAYS-OF-ARRAY-OF-POINTS
-Format a list of closed lines into WKT.  A LINE contains M<Geo::Point>
-objects or ARRAY-REFs to pairs. You may also provide a M<Geo::Line>
+=function wkt_multipolygon $objects|ARRAY-of-lines|ARRAYs-of-ARRAY-of-points
+Format a list of closed lines into WKT.  A line contains M<Geo::Point>
+objects or ARRAY-REFs to coordinate pairs. You may also provide a M<Geo::Line>
 or a M<Math::Polygon>.
 =cut
 
 sub wkt_multipolygon(@)
 {   return () unless @_;
 
-    my @polys = map { wkt_polygon $_ } @_;
+    my @polys = map wkt_polygon($_), @_;
     s/^POLYGON// for @polys;
 
-      'MULTIPOLYGON('.join( ',' , @polys). ')';
+    'MULTIPOLYGON(' .join(',' , @polys). ')';
 }
 
 
-=function wkt_optimal OBJECT
+=function wkt_optimal $object
 Pass any M<Geo::Shape> object, and the easiest representation is
 returned.
 =cut
@@ -257,22 +265,15 @@ sub wkt_optimal($)
     return wkt_multipolygon($geom)
         if $geom->isa('Geo::Surface');
 
-    croak "ERROR: Cannot translate object $geom into SQL"
-        unless $geom->isa('Geo::Space');
+    $geom->isa('Geo::Space')
+        or croak "ERROR: Cannot translate object $geom into SQL";
 
-    # Geo::Space
-
-    return wkt_optimal($geom->component(0))
-       if $geom->nrComponents==1;
-
-      $geom->onlyPoints   ? wkt_multipoint($geom->points)
-# remove these when I am sure all works
-#   : $geom->onlyRings    ? wkt_multipolygon($geom->lines)
-#   : $geom->onlyLines    ? wkt_multilinestring($geom->lines)
-    :                       wkt_geomcollection($geom)
+      $geom->nrComponents==1 ? wkt_optimal($geom->component(0))
+    : $geom->onlyPoints      ? wkt_multipoint($geom->points)
+    :                          wkt_geomcollection($geom);
 }
 
-=function wkt_geomcollection OBJECTS
+=function wkt_geomcollection $objects
 Whole bunch of unsorted geometries. You may specify one M<Geo::Space>
 or multiple things.
 =cut
@@ -283,7 +284,7 @@ sub wkt_geomcollection(@)
        && ref $_[0] ne 'ARRAY'
        && $_[0]->isa('Geo::Space');
 
-      'GEOMETRYCOLLECTION(' . join( ',', map { wkt_optimal $_ } @_ ) . ')';
+    'GEOMETRYCOLLECTION(' .join(',', map wkt_optimal($_), @_). ')';
 }
 
 1;

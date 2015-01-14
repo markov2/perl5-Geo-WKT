@@ -4,14 +4,13 @@ require 5.006;
 
 WriteMakefile
   ( NAME      => 'Geo::WKT'
-  , VERSION   => '0.04'
+  , VERSION   => '0.95'
   , AUTHOR    => 'Mark Overmeer'
   , ABSTRACT  => 'Geometry in wellknown text format'
 
   , PREREQ_PM =>
      { Geo::Point    => 0.91
      , Test::More    => 0.47
-     , Test::Pod     => 0
      }
   );
 
