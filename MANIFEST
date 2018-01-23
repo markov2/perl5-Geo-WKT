@@ -1,6 +1,7 @@
 ChangeLog
 MANIFEST
 Makefile.PL
+README.md
 lib/Geo/WKT.pm
 t/01use.t
 t/10point.t

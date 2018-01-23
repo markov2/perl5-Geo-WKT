@@ -1,8 +1,12 @@
-use strict;
-use warnings;
+# This code is part of distribution Geo-WKT.  Meta-POD processed with
+# OODoc into POD and HTML manual-pages.  See README.md
+# Copyright Mark Overmeer.  Licensed under the same terms as Perl itself.
 
 package Geo::WKT;
 use base 'Exporter';
+
+use strict;
+use warnings;
 
 use Geo::Shape  ();
 use Carp;
