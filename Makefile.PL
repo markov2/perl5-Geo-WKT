@@ -4,7 +4,7 @@ require 5.006;
 
 WriteMakefile
   ( NAME      => 'Geo::WKT'
-  , VERSION   => '0.96'
+  , VERSION   => '0.97'
   , AUTHOR    => 'Mark Overmeer'
   , ABSTRACT  => 'Geometry in Well-Known Text format'
 
