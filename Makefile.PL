@@ -5,8 +5,9 @@ require 5.006;
 WriteMakefile
   ( NAME      => 'Geo::WKT'
   , VERSION   => '0.97'
-  , AUTHOR    => 'Mark Overmeer'
+  , AUTHOR    => 'Mark Overmeer <markov@cpan.org>'
   , ABSTRACT  => 'Geometry in Well-Known Text format'
+  , LICENSE   => 'perl_5'
 
   , PREREQ_PM =>
      { Geo::Point    => 0.91
@@ -21,9 +22,9 @@ WriteMakefile
              , url  => 'https://github.com/markov2/perl5-Geo-WKT.git'
              , web  => 'https://github.com/markov2/perl5-Geo-WKT'
              }
+         , homepage => 'http://perl.overmeer.net/CPAN/'
+         , license  => [ 'http://dev.perl.org/licenses/' ]
          }
-      , homepage => 'http://perl.overmeer.net/CPAN/'
-      , license  => [ 'http://dev.perl.org/licenses/' ]
       }
   );
 
